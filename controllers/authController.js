@@ -11,8 +11,19 @@ const registerStudent = async (req, res) => {
   const hashedPassword = await bcrypt.hash(spassword, saltRounds);
 
   try {
-    const query = `INSERT INTO Student (email, sname, spassword) VALUES (?, ?, ?)`;
-    const values = [email, sname, hashedPassword];
+    // Get cgpa from cgData table
+    const cgpaData = await connection.query('SELECT cgpa FROM cgData WHERE email = ?', [email]);
+
+    // Check if cgpa data exists for the email
+    if (!cgpaData.length) {
+      return res.status(400).json({ message: 'No cgpa data found for the provided email' });
+    }
+
+    const cgpa = cgpaData[0][0].cgpa;
+    console.log(cgpaData[0][0])
+    // Register student with retrieved cgpa
+    const query = `INSERT INTO Student (email, sname, spassword, cgpa) VALUES (?, ?, ?, ?)`;
+    const values = [email, sname, hashedPassword, cgpa];
 
     await connection.query(query, values);
     res.status(201).json({ message: "Student registered successfully" });
@@ -54,19 +65,18 @@ const loginStudent = async (req, res) => {
 // using email to authenticate student
 const updateStudent = async (req, res) => {
   const studentId = req.params.email;
-  const { cgpa, firstPreference, secondPreference, thirdPreference } = req.body;
+  const {firstPreference, secondPreference, thirdPreference } = req.body;
 
   // Update the student record
   const updateQuery = `
     UPDATE Student
-    SET cgpa = ?,
-        firstPreference = ?,
+    SET firstPreference = ?,
         secondPreference = ?,
         thirdPreference = ?
     WHERE email = ?;
   `;
 
-  const values = [cgpa, firstPreference, secondPreference, thirdPreference, studentId];
+  const values = [firstPreference, secondPreference, thirdPreference, studentId];
 
   try {
     await connection.query(updateQuery, values);
